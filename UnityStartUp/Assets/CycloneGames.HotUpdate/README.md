@@ -1,3 +1,7 @@
+## About HotUpdate
+-   This hotupdate module utilizes the HybridCLR + YooAsset framework to implement code hotfix and asset updates.
+    -   [HybridCLR](https://github.com/focus-creative-games/hybridclr) code hotfix
+    -   [YooAsset](https://github.com/tuyoogame/YooAsset) asset hot update
 ## CAUTION: 
 -   You must drag the Cyclonegames.HotUpdate/Prefabs/ZenjectInstaller/YooAssetInstaller to your ProjectContext's PrefabInstaller list to make the hot update working.
 -   You must configure your own 'YooAssetData' in the ScriptableObject. The AssetServerURL must be your own storage server URL.
