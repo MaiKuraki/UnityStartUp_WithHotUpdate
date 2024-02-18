@@ -262,10 +262,10 @@ namespace CycloneGames.HotUpdate
 
         private async UniTask LoadHotUpdateDll()
         {
-            // Editor 环境下，dll 已经被自动加载，不需要加载，重复加载反而会出问题。
+            // Editor environment - no need to load hot update DLLs, as they are automatically loaded; loading again may cause issues.
 #if UNITY_EDITOR
             await UniTask.DelayFrame(1);
-            Debug.Log("编辑器模式无需加载热更Dll ");
+            Debug.Log("No need to load hot update DLLs in editor mode.");
 #else
             foreach (string dll in YooAssetConfig.HotUpdateDLLs)
             {
@@ -326,7 +326,7 @@ namespace CycloneGames.HotUpdate
             };
 
             // 注册取消操作
-            cancellationToken.Register(() =>
+            var registration = cancellationToken.Register(() =>
             {
                 if (!handle.IsDone)
                 {
@@ -334,6 +334,7 @@ namespace CycloneGames.HotUpdate
                     // handle.Release();
                 }
             });
+            handle.Completed += _ => registration.Dispose();
 
             return completionSource.Task;
         }
@@ -379,171 +380,141 @@ namespace CycloneGames.HotUpdate
         private void OnStartDownloadFile(string fileName, long sizeBytes)
         {
         }
-
-        public UniTask<TObject> LoadAssetAsync<TObject>(string location, uint priority = 0,
+        
+        public async UniTask<TObject> LoadAssetAsync<TObject>(string location, uint priority = 0,
             AssetHandleReleasePolicy releasePolicy = AssetHandleReleasePolicy.Keep,
             CancellationToken cancellationToken = default) where TObject : UnityEngine.Object
         {
-            var completionSource = new UniTaskCompletionSource<TObject>();
-            var operation = resourcePackage.LoadAssetAsync<TObject>(location, priority);
-
-            operation.Completed += (op) =>
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    completionSource.TrySetCanceled();
-                    ReleaseAssetHandleIfNeeded(operation, releasePolicy);
-                    return;
-                }
-
-                if (op.Status == EOperationStatus.Succeed)
-                {
-                    completionSource.TrySetResult(op.AssetObject as TObject);
-                }
-                else
-                {
-                    var errorMessage = $"Failed to load the asset at location {location}. Status: {op.Status}";
-                    Debug.LogError($"{DEBUG_FLAG} {errorMessage}");
-                    completionSource.TrySetException(new Exception(errorMessage));
-                }
-
-                ReleaseAssetHandleIfNeeded(operation, releasePolicy);
-            };
-
-            RegisterForCancellation(operation, cancellationToken);
-
-            return completionSource.Task;
+            var handle = resourcePackage.LoadAssetAsync(location, priority);
+            RegisterForCancellation(handle, cancellationToken); // Register early for cancellation
+            await handle.ToUniTask(cancellationToken: cancellationToken); // Use cancellationToken to support cancellation operations
+            return ProcessLoadedAsset<TObject>(handle, releasePolicy, cancellationToken);
         }
 
-        public UniTask<T> LoadRawFileAsync<T>(string location, uint priority = 0,
+        public async UniTask<TRawFile> LoadRawFileAsync<TRawFile>(string location, uint priority = 0,
             AssetHandleReleasePolicy releasePolicy = AssetHandleReleasePolicy.Keep,
-            CancellationToken cancellationToken = default) where T : class
+            CancellationToken cancellationToken = default) where TRawFile : class
         {
-            var completionSource = new UniTaskCompletionSource<T>();
-
-            // 异步加载原始文件
-            var handle = rawFilePackage?.LoadRawFileAsync(location, priority);
-            if (handle == null)
-            {
-                completionSource.TrySetException(
-                    new Exception($"{DEBUG_FLAG} RawFilePackage is not initialized or handle is null."));
-                return completionSource.Task;
-            }
-
-            handle.Completed += (op) =>
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    completionSource.TrySetCanceled();
-                    ReleaseAssetHandleIfNeeded(op, releasePolicy);
-                    return;
-                }
-
-                if (op.Status == EOperationStatus.Succeed)
-                {
-                    try
-                    {
-                        // 根据泛型类型参数T来决定如何处理加载后的文件内容
-                        if (typeof(T) == typeof(byte[]))
-                        {
-                            byte[] result = op.GetRawFileData();
-                            completionSource.TrySetResult(result as T);
-                        }
-                        else if (typeof(T) == typeof(string))
-                        {
-                            string result = op.GetRawFileText();
-                            completionSource.TrySetResult(result as T);
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException($"{DEBUG_FLAG} Unsupported type parameter provided.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        completionSource.TrySetException(ex);
-                    }
-                    finally
-                    {
-                        ReleaseAssetHandleIfNeeded(op, releasePolicy);
-                    }
-                }
-                else
-                {
-                    var errorMessage =
-                        $"{DEBUG_FLAG} Failed to load the raw file at location {location}. Status: {op.Status}";
-                    completionSource.TrySetException(new Exception(errorMessage));
-                    ReleaseAssetHandleIfNeeded(op, releasePolicy);
-                }
-            };
-
-            // 注册取消操作
-            RegisterForCancellation(handle, cancellationToken);
-
-            return completionSource.Task;
+            var handle = rawFilePackage.LoadRawFileAsync(location, priority);
+            RegisterForCancellation(handle, cancellationToken); // Register early for cancellation
+            await handle.ToUniTask(cancellationToken: cancellationToken); // Use cancellationToken to support cancellation operations
+            return ProcessLoadedRawFile<TRawFile>(handle, releasePolicy, cancellationToken);
         }
 
-        private void ReleaseAssetHandleIfNeeded(YooAsset.AssetHandle operation, AssetHandleReleasePolicy releasePolicy)
+        private TObject ProcessLoadedAsset<TObject>(AssetHandle handle, AssetHandleReleasePolicy releasePolicy,
+            CancellationToken cancellationToken) where TObject : UnityEngine.Object
         {
-            if (releasePolicy == AssetHandleReleasePolicy.ReleaseOnComplete && operation.IsValid)
+            if (cancellationToken.IsCancellationRequested)
             {
-                operation.Release();
+                handle.Release(); // 确保在取消时释放资源
+                throw new OperationCanceledException();
             }
+
+            if (!handle.IsValid)
+            {
+                throw new Exception($"{DEBUG_FLAG} Asset load failed or handle is invalid.");
+            }
+
+            TObject asset = handle.AssetObject as TObject;
+            if (releasePolicy == AssetHandleReleasePolicy.ReleaseOnComplete)
+            {
+                handle.Release();
+            }
+            return asset;
         }
 
-        private void RegisterForCancellation(YooAsset.AssetHandle operation, CancellationToken cancellationToken)
+        private T ProcessLoadedRawFile<T>(RawFileHandle handle, AssetHandleReleasePolicy releasePolicy,
+            CancellationToken cancellationToken) where T : class
         {
-            cancellationToken.Register(() =>
+            if (cancellationToken.IsCancellationRequested)
             {
-                if (!operation.IsDone && operation.IsValid)
+                handle.Release(); // 确保在取消时释放资源
+                throw new OperationCanceledException();
+            }
+
+            if (!handle.IsValid)
+            {
+                throw new Exception($"{DEBUG_FLAG} Raw file load failed or handle is invalid.");
+            }
+
+            T result = null;
+            if (typeof(T) == typeof(byte[]))
+            {
+                result = handle.GetRawFileData() as T;
+            }
+            else if (typeof(T) == typeof(string))
+            {
+                result = handle.GetRawFileText() as T;
+            }
+            else
+            {
+                throw new InvalidOperationException($"{DEBUG_FLAG} Unsupported type parameter provided.");
+            }
+
+            if (releasePolicy == AssetHandleReleasePolicy.ReleaseOnComplete)
+            {
+                handle.Release();
+            }
+            return result;
+        }
+
+        // Ensures that the resource is released upon cancellation.
+        private void RegisterForCancellation(AssetHandle handle, CancellationToken cancellationToken)
+        {
+            var registration = cancellationToken.Register(() =>
+            {
+                if (handle.IsValid && !handle.IsDone)
                 {
-                    operation.Release();
+                    handle.Release();
                 }
             });
+            
+            // Dispose of the registration when the asset loading is complete.
+            handle.Completed += _ => registration.Dispose();
         }
-
-        private void ReleaseAssetHandleIfNeeded(YooAsset.RawFileHandle operation,
-            AssetHandleReleasePolicy releasePolicy)
+        
+        // Ensures that the resource is released upon cancellation.
+        private void RegisterForCancellation(YooAsset.RawFileHandle handle, CancellationToken cancellationToken)
         {
-            if (releasePolicy == AssetHandleReleasePolicy.ReleaseOnComplete && operation.IsValid)
+            var registration = cancellationToken.Register(() =>
             {
-                operation.Release();
-            }
-        }
-
-        private void RegisterForCancellation(YooAsset.RawFileHandle operation, CancellationToken cancellationToken)
-        {
-            cancellationToken.Register(() =>
-            {
-                if (!operation.IsDone && operation.IsValid)
+                if (handle.IsValid && !handle.IsDone)
                 {
-                    operation.Release();
+                    handle.Release();
                 }
             });
+            
+            // Dispose of the registration when the asset loading is complete.
+            handle.Completed += _ => registration.Dispose();
         }
 
+        // Attempts to unload an unused asset located at the specified location.
         public void TryUnloadUnusedAsset(string location)
         {
             resourcePackage?.TryUnloadUnusedAsset(location);
         }
 
+        // Attempts to unload an unused raw file located at the specified location.
         public void TryUnloadUnusedRawFile(string location)
         {
             rawFilePackage?.TryUnloadUnusedAsset(location);
         }
 
+        // Calls the appropriate package to unload any unused assets.
         public void UnloadUnusedAssets()
         {
             resourcePackage?.UnloadUnusedAssets();
             rawFilePackage?.UnloadUnusedAssets();
         }
         
+        // Retrieves the version of the resource package.
         public string GetResourcePackageVersion()
         {
             string result = resourcePackage?.GetPackageVersion();
             return string.IsNullOrEmpty(result) ? "Invalid Resource Version" : result;
         }
 
+        // Retrieves the version of the raw file package.
         public string GetRawFilePackageVersion()
         {
             string result = rawFilePackage?.GetPackageVersion();

@@ -3,19 +3,23 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using Cysharp.Threading.Tasks;
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 
 namespace CycloneGames.Service
 {
     public class AddressablesManager : MonoBehaviour
     {
-        private const string DEBUG_FLAG = "[AddressablesManager]";
-
         public enum AssetHandleReleasePolicy
         {
             Keep,
             ReleaseOnComplete
         }
+        
+        private const string DEBUG_FLAG = "[AddressablesManager]";
+        
+        // ConcurrentDictionary to ensure thread safety when accessing activeHandles.
+        private ConcurrentDictionary<string, AsyncOperationHandle> activeHandles = new ConcurrentDictionary<string, AsyncOperationHandle>();
 
         // Loads an asset asynchronously and returns a UniTask.
         public UniTask<TResultObject> LoadAssetAsync<TResultObject>(string key, AssetHandleReleasePolicy releasePolicy,
@@ -29,7 +33,7 @@ namespace CycloneGames.Service
                 if (cancellationToken.IsCancellationRequested)
                 {
                     completionSource.TrySetCanceled();
-                    ReleaseAssetHandleIfNeeded(operationHandle, releasePolicy);
+                    ReleaseAssetHandleIfNeeded(key, operationHandle, releasePolicy);
                     return;
                 }
 
@@ -37,6 +41,11 @@ namespace CycloneGames.Service
                 {
                     if (operation.Status == AsyncOperationStatus.Succeeded)
                     {
+                        // Store the handle in the dictionary if needed
+                        if (releasePolicy == AssetHandleReleasePolicy.Keep)
+                        {
+                            activeHandles[key] = operationHandle;
+                        }
                         completionSource.TrySetResult(operation.Result);
                     }
                     else
@@ -45,10 +54,8 @@ namespace CycloneGames.Service
                         if (operation.OperationException != null)
                         {
                             errorMessage += $", Exception: {operation.OperationException.Message}";
-                            throw operation.OperationException; // This preserves stack trace.
                         }
-
-                        throw new Exception(errorMessage);
+                        completionSource.TrySetException(new Exception(errorMessage));
                     }
                 }
                 catch (Exception ex)
@@ -58,32 +65,58 @@ namespace CycloneGames.Service
                 }
                 finally
                 {
-                    ReleaseAssetHandleIfNeeded(operationHandle, releasePolicy);
+                    if (releasePolicy != AssetHandleReleasePolicy.Keep)
+                    {
+                        ReleaseAssetHandleIfNeeded(key, operationHandle, releasePolicy);
+                    }
                 }
             };
 
+            RegisterForCancellation(key, operationHandle, cancellationToken);
             return completionSource.Task;
         }
 
+        // Method to release a handle by key
+        public void ReleaseAssetHandle(string key)
+        {
+            if (activeHandles.TryRemove(key, out AsyncOperationHandle handle))
+            {
+                if (handle.IsValid())
+                {
+                    Addressables.Release(handle);
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"{DEBUG_FLAG} No handle found for key: {key}");
+            }
+        }
+        
         // Releases an asset using its handle if the policy dictates.
-        private void ReleaseAssetHandleIfNeeded(AsyncOperationHandle handle, AssetHandleReleasePolicy releasePolicy)
+        private void ReleaseAssetHandleIfNeeded(string key, AsyncOperationHandle handle, AssetHandleReleasePolicy releasePolicy)
         {
             if (releasePolicy == AssetHandleReleasePolicy.ReleaseOnComplete && handle.IsValid())
             {
                 Addressables.Release(handle);
+                activeHandles.TryRemove(key, out _);
             }
         }
-
+        
         // Cancels the asset load operation if the CancellationToken is invoked.
-        private void RegisterForCancellation(AsyncOperationHandle handle, CancellationToken cancellationToken)
+        private void RegisterForCancellation(string key, AsyncOperationHandle handle, CancellationToken cancellationToken)
         {
-            cancellationToken.Register(() =>
+            // Register a callback with the cancellation token that will release the handle if the token is cancelled.
+            var registration = cancellationToken.Register(() =>
             {
-                if (!handle.IsDone)
+                if (handle.IsValid() && !handle.IsDone)
                 {
                     Addressables.Release(handle);
+                    activeHandles.TryRemove(key, out _);
                 }
             });
+
+            // To prevent the callback from remaining registered after the task is complete, we unregister it upon completion.
+            handle.Completed += _ => registration.Dispose();
         }
     }
 }
