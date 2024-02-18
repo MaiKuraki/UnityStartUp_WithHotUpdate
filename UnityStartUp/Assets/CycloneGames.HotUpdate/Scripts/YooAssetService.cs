@@ -43,6 +43,7 @@ namespace CycloneGames.HotUpdate
 
         string GetResourcePackageVersion();
         string GetRawFilePackageVersion();
+        bool IsServiceReady();
     }
 
     public class YooAssetService : IYooAssetService, IInitializable
@@ -128,6 +129,11 @@ namespace CycloneGames.HotUpdate
         {
             string result = yooAssetManager?.GetRawFilePackageVersion();
             return string.IsNullOrEmpty(result) ? "Invalid YooAssetManager" : result;
+        }
+
+        public bool IsServiceReady()
+        {
+            return yooAssetManager != null;
         }
 
         public void RegisterHotUpdateDownloadCallback(Action<string> OnHotUpdateStartDownload,

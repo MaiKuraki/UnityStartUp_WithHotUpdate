@@ -103,6 +103,13 @@ namespace CycloneGames.UIFramework
 
         public void RemovePage(string InPageName)
         {
+            //  NOTE: Ensure the uiPageList is init.
+            if (!bFinishedLayerInit)
+            {
+                Debug.LogError($"{DEBUG_FLAG} layer not init, current layer: {LayerName}");
+                return;
+            }
+            
             UIPage page = TryGetPageByPageName(InPageName);
             if (!page)
             {
