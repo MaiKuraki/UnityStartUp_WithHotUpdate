@@ -51,7 +51,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   priority: 0
-  AssetsUpdatePanelTF: {fileID: 857568630926976189}
+  ProgressBarGroupTF: {fileID: 4467433528580512163}
   HotUpdateProgressBar: {fileID: 2467504807031623132}
   PackageProgressText: {fileID: 2106613746437802222}
   PackageNameText: {fileID: 3512028326424067460}

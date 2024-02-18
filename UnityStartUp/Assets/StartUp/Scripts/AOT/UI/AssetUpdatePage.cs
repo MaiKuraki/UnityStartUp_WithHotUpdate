@@ -5,12 +5,13 @@ using UnityEngine.UI;
 using Zenject;
 using CycloneGames.UIFramework;
 using Cysharp.Threading.Tasks;
+using UnityEngine.Serialization;
 
 public class AssetUpdatePage : UIPage
 {
     [Inject] private IYooAssetService yooAssetService;
 
-    [SerializeField] private Transform AssetsUpdatePanelTF;
+    [SerializeField] private Transform ProgressBarGroupTF;
     [SerializeField] private Slider HotUpdateProgressBar;
     [SerializeField] private TMP_Text PackageProgressText;
     [SerializeField] private TMP_Text PackageNameText;
@@ -27,7 +28,7 @@ public class AssetUpdatePage : UIPage
         base.Start();
 
         HotUpdateProgressBar.value = 0;
-        AssetsUpdatePanelTF.gameObject.SetActive(false);
+        ProgressBarGroupTF.gameObject.SetActive(false);
     }
 
     async UniTask RegisterYooAssetServiceEvent()
@@ -45,7 +46,7 @@ public class AssetUpdatePage : UIPage
 
     void UpdateStartDownloadUI(string packageNameStr)
     {
-        AssetsUpdatePanelTF.gameObject.SetActive(true);
+        ProgressBarGroupTF.gameObject.SetActive(true);
         PackageNameText.text = $"Update Assets [{packageNameStr}]";
     }
 
@@ -62,7 +63,7 @@ public class AssetUpdatePage : UIPage
 
     void OnHotUpdateCompleted()
     {
-        AssetsUpdatePanelTF.gameObject.SetActive(false);
+        ProgressBarGroupTF.gameObject.SetActive(false);
     }
 
     protected override void OnDestroy()
