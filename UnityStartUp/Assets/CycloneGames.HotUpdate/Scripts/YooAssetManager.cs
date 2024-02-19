@@ -406,7 +406,7 @@ namespace CycloneGames.HotUpdate
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                handle.Release(); // 确保在取消时释放资源
+                handle?.Release(); // 确保在取消时释放资源
                 throw new OperationCanceledException();
             }
 
@@ -428,7 +428,7 @@ namespace CycloneGames.HotUpdate
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                handle.Release(); // 确保在取消时释放资源
+                handle?.Release(); // 确保在取消时释放资源
                 throw new OperationCanceledException();
             }
 
