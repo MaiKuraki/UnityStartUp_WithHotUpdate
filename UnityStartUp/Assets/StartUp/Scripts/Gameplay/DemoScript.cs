@@ -1,6 +1,6 @@
+using System.Collections;
 using CycloneGames.HotUpdate;
 using CycloneGames.UIFramework;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Zenject;
@@ -18,13 +18,14 @@ namespace StartUp.Gameplay
 
         void StartDemo()
         {
-            UnloadLaunchScene().Forget();
+            StartCoroutine(UnloadLaunchScene());
         }
 
-        async UniTask UnloadLaunchScene()
+        IEnumerator UnloadLaunchScene()
         {
             uiService.OpenUI(UI.PageName.StartUpPage);
-            await SceneManager.UnloadSceneAsync("Scene_Launch");
+            var UnloadSceneTask = SceneManager.UnloadSceneAsync("Scene_Launch");
+            yield return new WaitUntil(() => UnloadSceneTask.isDone);
             yooAssetService.UnloadUnusedAssets();
             uiService.CloseUI(UI.PageName.TitlePage);
             uiService.CloseUI(UI.PageName.AssetUpdatePage);
