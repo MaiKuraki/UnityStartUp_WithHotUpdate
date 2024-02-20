@@ -5,7 +5,6 @@ using UnityEngine.UI;
 using Zenject;
 using CycloneGames.UIFramework;
 using Cysharp.Threading.Tasks;
-using UnityEngine.Serialization;
 
 public class AssetUpdatePage : UIPage
 {
