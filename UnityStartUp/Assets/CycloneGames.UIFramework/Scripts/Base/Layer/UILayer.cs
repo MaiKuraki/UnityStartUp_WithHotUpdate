@@ -54,6 +54,11 @@ namespace CycloneGames.UIFramework
             Debug.Log($"{DEBUG_FLAG} Finished init Layer: {LayerName}");
         }
 
+        public bool HasPage(string InPageName)
+        {
+            return uiPagesList.Any(page => page.PageName.Equals(InPageName, System.StringComparison.OrdinalIgnoreCase));
+        }
+        
         public void AddPage(UIPage newPage)
         {
             //  NOTE: Ensure the uiPageList is sorted.
