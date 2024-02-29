@@ -1,4 +1,8 @@
-# Unity StartUP With HotUpdate
+# Unity StartUp Project Template(Include HotUpdate Module)
+<p align="center">
+    <br> English | <a href="README_CHN.md">中文</a>
+</p>
+
 ## Overview
 This project is built upon a DI/IoC framework and presents a type design reminiscent of Unreal Engine's GameplayFramework. It incorporates code and resource hot updates, a straightforward hierarchical UI framework, and an automated packaging script. Tailored for games requiring hot update functionality, especially service-oriented games on mobile platforms, this project serves as an ideal starting template.
 ## File Directory Structure

@@ -1,4 +1,8 @@
-# Unity StartUP With HotUpdate
+# Unity初始项目模板(包含资源/代码热更新模块)
+<p align="center">
+    <br> <a href="README.md">English</a> | 中文
+</p>
+
 ## 关于
 该项目基于 DI/IoC 框架，提供了一套类似于虚幻引擎 GameplayFramework 的类型设计。它包括代码和资源的热更新、一个简易的分层 UI 框架以及一个自动化的打包脚本。适用于需要热更新功能的游戏项目，尤其是移动平台上的服务型游戏，本项目可作为理想的起始模板。
 ## 文件目录结构
