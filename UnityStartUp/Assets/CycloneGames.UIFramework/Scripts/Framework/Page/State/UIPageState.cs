@@ -8,4 +8,11 @@ namespace CycloneGames.UIFramework
         void OnExit(UIPage page);
         void Update(UIPage page);
     }
+    
+    public abstract class UIPageState : IUIPageState
+    {
+        public abstract void OnEnter(UIPage page);
+        public abstract void OnExit(UIPage page);
+        public virtual void Update(UIPage page) { }
+    }
 }
