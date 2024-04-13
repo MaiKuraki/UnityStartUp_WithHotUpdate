@@ -27,11 +27,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 867b813062146d245b018203ff35f926
-    m_Address: Assets/StartUp/ScriptableObject
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1e00f6067e71d2845bd94c8853037363
     m_Address: Assets/CycloneGames.HotUpdate/ScriptableObject
     m_ReadOnly: 0

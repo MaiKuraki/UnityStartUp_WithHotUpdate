@@ -17,6 +17,11 @@
   <assembly fullname="MessagePipe.Zenject">
     <type fullname="MessagePipe.DiContainerExtensions" preserve="all" />
   </assembly>
+  <assembly fullname="System">
+    <type fullname="System.CodeDom.Compiler.GeneratedCodeAttribute" preserve="all" />
+    <type fullname="System.ComponentModel.EditorBrowsableAttribute" preserve="all" />
+    <type fullname="System.ComponentModel.EditorBrowsableState" preserve="all" />
+  </assembly>
   <assembly fullname="Unity.TextMeshPro">
     <type fullname="TMPro.TMP_Text" preserve="all" />
   </assembly>
@@ -44,6 +49,8 @@
     <type fullname="Zenject.InjectAttribute" preserve="all" />
   </assembly>
   <assembly fullname="mscorlib">
+    <type fullname="System.Array" preserve="all" />
+    <type fullname="System.Byte" preserve="all" />
     <type fullname="System.Collections.Generic.IEnumerator`1" preserve="all" />
     <type fullname="System.Collections.IEnumerator" preserve="all" />
     <type fullname="System.Diagnostics.DebuggableAttribute" preserve="all" />
@@ -57,6 +64,9 @@
     <type fullname="System.Runtime.CompilerServices.CompilerGeneratedAttribute" preserve="all" />
     <type fullname="System.Runtime.CompilerServices.IteratorStateMachineAttribute" preserve="all" />
     <type fullname="System.Runtime.CompilerServices.RuntimeCompatibilityAttribute" preserve="all" />
+    <type fullname="System.Runtime.CompilerServices.RuntimeHelpers" preserve="all" />
+    <type fullname="System.RuntimeFieldHandle" preserve="all" />
     <type fullname="System.Type" preserve="all" />
+    <type fullname="System.ValueType" preserve="all" />
   </assembly>
 </linker>
